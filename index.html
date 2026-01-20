@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Y2K Theme Sync Todo</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;500;700&display=swap');
+
+        :root {
+            --main-theme: #FFB7C5;
+            --accent-glow: #FFD1DC;
+            --point-color: #FFB7C5;
+            --glow-rgba: rgba(255, 209, 220, 0.5);
+            --pinned-bg: rgba(255, 183, 197, 0.15);
+            --item-border: rgba(255, 209, 220, 0.5);
+            --text-main: #666666;
+        }
+
+        body {
+            display: flex;
+            justify-content: flex-start;
+            align-items: flex-start;
+            min-height: 100vh;
+            margin: 0;
+            background-color: transparent;
+            font-family: 'Noto Sans KR', sans-serif;
+            padding: 20px;
+        }
+
+        .main-wrapper {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+            position: relative;
+            width: 100%;
+        }
+
+        /* 공통 상단바 스타일 */
+        .header {
+            background-color: var(--main-theme);
+            padding: 5px 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+            border-bottom: 1.5px solid var(--accent-glow);
+        }
+        .header-left { display: flex; align-items: center; font-size: 12px; font-weight: 700; }
+        .header-left::before { content: '❤'; margin-right: 5px; }
+
+        .window-controls { display: flex; gap: 4px; }
+        .control-btn {
+            width: 16px; height: 16px;
+            background-color: white;
+            border: 1px solid var(--accent-glow);
+            border-radius: 2px;
+            display: flex; align-items: center; justify-content: center;
+            color: var(--main-theme); font-size: 10px; cursor: pointer;
+        }
+
+        /* 메인 위젯 */
+        .widget-container {
+            width: 260px;
+            background-color: #FFFFFF;
+            border: 1.5px solid var(--accent-glow);
+            border-radius: 5px;
+            box-shadow: 0 0 12px var(--glow-rgba);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            z-index: 10;
+        }
+
+        /* Settings 팝업 */
+        #settingsPanel {
+            width: 210px;
+            background: #fff;
+            border: 1.5px solid var(--accent-glow);
+            border-radius: 5px;
+            padding: 0;
+            display: none; 
+            box-shadow: 0 8px 20px rgba(0,0,0,0.1);
+            position: absolute;
+            left: 280px;
+            top: 0;
+            z-index: 100;
+            overflow: hidden;
+        }
+        #dragHandle { cursor: move; user-select: none; }
+        .setting-body { padding: 12px; }
+        
+        .theme-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 8px; margin-bottom: 15px;
+        }
+        .theme-btn {
+            display: flex; flex-direction: column; align-items: center;
+            cursor: pointer; border: 1px solid #eee; border-radius: 5px;
+            padding: 5px 0; transition: all 0.2s;
+        }
+        .theme-btn:hover { background: #f9f9f9; border-color: var(--main-theme); }
+        .theme-preview {
+            width: 18px; height: 18px; border-radius: 50%;
+            margin-bottom: 4px; border: 1px solid rgba(0,0,0,0.05);
+        }
+        .theme-name { font-size: 9px; color: #888; }
+
+        .setting-item {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 8px; font-size: 11px; color: #666;
+        }
+        .setting-item input[type="color"] {
+            width: 25px; height: 18px; border: 1px solid #ddd; cursor: pointer; padding: 0;
+        }
+        input[type=range] { width: 100%; cursor: pointer; accent-color: var(--main-theme); }
+
+        /* 투두 기능 */
+        .input-area {
+            padding: 10px; display: flex; gap: 6px; position: relative;
+        }
+        .input-area::after {
+            content: ''; position: absolute; bottom: 0; left: 15px; right: 15px;
+            border-bottom: 1px dashed var(--accent-glow);
+        }
+        .todo-input {
+            flex: 1; padding: 6px 10px; border: 1px solid var(--main-theme);
+            border-radius: 3px; outline: none; font-size: 12px;
+        }
+        .add-btn {
+            width: 26px; height: 26px; background-color: var(--main-theme);
+            border: none; border-radius: 3px; color: white;
+            font-size: 16px; font-weight: 700; cursor: pointer;
+        }
+        .todo-list { list-style: none; padding: 10px 15px; margin: 0; min-height: 20px; }
+        .todo-item {
+            display: flex; align-items: center; padding: 7px 6px;
+            border: 1px solid var(--item-border); border-radius: 3px;
+            margin-bottom: 5px; background: #FFF; transition: all 0.2s ease;
+        }
+        
+        /* [수정] 강조 항목 스타일: 배경색과 글자색 모두 변경 */
+        .todo-item.pinned { 
+            background-color: var(--pinned-bg); 
+            border: 1px solid var(--main-theme); 
+        }
+        .todo-item.pinned .todo-text { 
+            color: var(--point-color); /* 글자색을 강조 색상으로 변경 */
+            font-weight: 700; /* 조금 더 강조되도록 두껍게 */
+        }
+
+        .checkbox {
+            width: 12px; height: 12px; border: 1.2px solid var(--main-theme);
+            border-radius: 2px; margin-right: 10px; cursor: pointer; background: white;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .completed .checkbox { background-color: var(--main-theme); }
+        .checkbox::after {
+            content: ''; display: none; width: 3.5px; height: 6.5px;
+            border: solid white; border-width: 0 1.5px 1.5px 0;
+            transform: rotate(45deg); margin-bottom: 1.5px;
+        }
+        .completed .checkbox::after { display: block; }
+        .todo-text { flex: 1; font-size: 12px; color: var(--text-main); }
+        .edit-input { flex: 1; font-size: 12px; color: var(--text-main); border: none; border-bottom: 1px solid var(--point-color); outline: none; background: transparent; }
+        .completed .todo-text { text-decoration: line-through !important; color: #DDD !important; }
+        .actions { display: flex; gap: 3px; }
+        .action-btn {
+            width: 19px; height: 19px; background: white; border: 1px solid #F0F0F0;
+            border-radius: 2px; cursor: pointer; font-size: 11px; color: #CCC;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .heart-btn.active { color: var(--point-color) !important; border-color: var(--point-color) !important; }
+        .edit-btn:hover, .delete-btn:hover { color: var(--point-color); border-color: var(--point-color); }
+        .footer { text-align: center; padding: 0 0 10px 0; font-size: 10px; color: var(--main-theme); font-weight: 900; letter-spacing: 1px; }
+    </style>
+</head>
+<body>
+
+<div class="main-wrapper">
+    <div class="widget-container">
+        <div class="header">
+            <div class="header-left">to do list</div>
+            <div class="window-controls">
+                <div class="control-btn" onclick="toggleSettings()" title="Settings">⚙</div>
+                <div class="control-btn" onclick="location.reload()" title="새로고침">×</div>
+            </div>
+        </div>
+        <div class="input-area">
+            <input type="text" id="todoInput" class="todo-input" placeholder="할 일 추가..." autocomplete="off">
+            <button onclick="addTodo()" class="add-btn">+</button>
+        </div>
+        <ul id="todoList" class="todo-list"></ul>
+        <div class="footer">YANGYANG ❤</div>
+    </div>
+
+    <div id="settingsPanel">
+        <div class="header" id="dragHandle">
+            <div class="header-left">Settings</div>
+            <div class="window-controls">
+                <div class="control-btn" onclick="toggleSettings()" title="닫기">×</div>
+            </div>
+        </div>
+        <div class="setting-body">
+            <div style="font-size: 11px; margin-bottom: 8px; color: #888;">테마 선택</div>
+            <div class="theme-grid">
+                <div class="theme-btn" onclick="setTheme('#FFB7C5', '#FFD1DC', '#FFB7C5')">
+                    <div class="theme-preview" style="background: #FFB7C5;"></div>
+                    <div class="theme-name">기본</div>
+                </div>
+                <div class="theme-btn" onclick="setTheme('#DCD0FF', '#E6E6FA', '#B39DDB')">
+                    <div class="theme-preview" style="background: #DCD0FF;"></div>
+                    <div class="theme-name">퍼플</div>
+                </div>
+                <div class="theme-btn" onclick="setTheme('#333333', '#1A1A1A', '#555555')">
+                    <div class="theme-preview" style="background: #333333;"></div>
+                    <div class="theme-name">다크</div>
+                </div>
+                <div class="theme-btn" onclick="setTheme('#F2F2F2', '#D9D9D9', '#BFBFBF')">
+                    <div class="theme-preview" style="background: #F2F2F2;"></div>
+                    <div class="theme-name">화이트</div>
+                </div>
+                <div class="theme-btn" onclick="setTheme('#E6F598', '#D4E157', '#C0CA33')">
+                    <div class="theme-preview" style="background: #E6F598;"></div>
+                    <div class="theme-name">그린</div>
+                </div>
+                <div class="theme-btn" onclick="setTheme('#D1E1F0', '#B0C4DE', '#8DA9C4')">
+                    <div class="theme-preview" style="background: #D1E1F0;"></div>
+                    <div class="theme-name">블루</div>
+                </div>
+            </div>
+            <div style="font-size: 11px; margin-bottom: 8px; color: #888;">세부 색상 설정</div>
+            <div class="setting-item">기본 색상 <input type="color" id="mainColor"></div>
+            <div class="setting-item">서브 색상 <input type="color" id="glowColor"></div>
+            <div class="setting-item">강조 색상 <input type="color" id="pointColor"></div>
+            <div class="setting-item" style="flex-direction: column; align-items: flex-start; margin-top: 15px;">
+                <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 5px;">
+                    <span>네온 투명도</span>
+                    <span id="opacityValue" style="font-size: 9px; color: #999;">50%</span>
+                </div>
+                <input type="range" id="glowOpacity" min="0" max="1" step="0.05" value="0.5">
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function hexToRgba(hex, alpha) {
+        let c; if(/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)){ c= hex.substring(1).split(''); if(c.length== 3){ c= [c[0], c[0], c[1], c[1], c[2], c[2]]; } c= '0x'+c.join(''); return 'rgba('+[(c>>16)&255, (c>>8)&255, c&255].join(',')+','+alpha+')'; } return `rgba(0,0,0,${alpha})`;
+    }
+
+    let config = JSON.parse(localStorage.getItem('y2k-final-v8-colors')) || { main: '#FFB7C5', glow: '#FFD1DC', point: '#FFB7C5', opacity: '0.5' };
+
+    function apply() {
+        const root = document.documentElement;
+        root.style.setProperty('--main-theme', config.main);
+        root.style.setProperty('--accent-glow', config.glow);
+        root.style.setProperty('--point-color', config.point);
+        root.style.setProperty('--glow-rgba', hexToRgba(config.glow, config.opacity));
+        root.style.setProperty('--pinned-bg', hexToRgba(config.main, '0.15'));
+        root.style.setProperty('--item-border', hexToRgba(config.glow, '0.5'));
+
+        document.getElementById('mainColor').value = config.main;
+        document.getElementById('glowColor').value = config.glow;
+        document.getElementById('pointColor').value = config.point;
+        document.getElementById('glowOpacity').value = config.opacity;
+        document.getElementById('opacityValue').innerText = Math.round(config.opacity * 100) + '%';
+    }
+
+    function setTheme(main, glow, point) { config.main = main; config.glow = glow; config.point = point; apply(); saveConfig(); }
+    function saveConfig() { localStorage.setItem('y2k-final-v8-colors', JSON.stringify(config)); }
+    function toggleSettings() { const panel = document.getElementById('settingsPanel'); panel.style.display = (panel.style.display === 'block') ? 'none' : 'block'; }
+
+    document.querySelectorAll('#settingsPanel input[type="color"]').forEach(input => { input.addEventListener('input', (e) => { const id = e.target.id; if (id === 'mainColor') config.main = e.target.value; if (id === 'glowColor') config.glow = e.target.value; if (id === 'pointColor') config.point = e.target.value; apply(); saveConfig(); }); });
+    document.getElementById('glowOpacity').addEventListener('input', (e) => { config.opacity = e.target.value; apply(); saveConfig(); });
+
+    const dragHandle = document.getElementById('dragHandle');
+    const settingsPanel = document.getElementById('settingsPanel');
+    let isDragging = false; let offset = { x: 0, y: 0 };
+    dragHandle.addEventListener('mousedown', (e) => { if(e.target.className === 'control-btn') return; isDragging = true; offset.x = e.clientX - settingsPanel.offsetLeft; offset.y = e.clientY - settingsPanel.offsetTop; });
+    document.addEventListener('mousemove', (e) => { if (!isDragging) return; settingsPanel.style.left = (e.clientX - offset.x) + 'px'; settingsPanel.style.top = (e.clientY - offset.y) + 'px'; });
+    document.addEventListener('mouseup', () => { isDragging = false; });
+
+    let todos = JSON.parse(localStorage.getItem('y2k-final-v8-todos')) || [];
+    function save() { localStorage.setItem('y2k-final-v8-todos', JSON.stringify(todos)); render(); }
+    function render() {
+        const list = document.getElementById('todoList'); list.innerHTML = '';
+        todos.sort((a, b) => (b.pinned - a.pinned) || (a.completed - b.completed));
+        todos.forEach(t => {
+            const li = document.createElement('li');
+            li.className = `todo-item ${t.completed ? 'completed' : ''} ${t.pinned ? 'pinned' : ''}`;
+            const textContent = t.isEditing ? `<input type="text" class="edit-input" value="${t.text}" onblur="finishEdit(${t.id}, this.value)" onkeypress="handleEditKey(event, ${t.id}, this.value)">` : `<span class="todo-text">${t.text}</span>`;
+            li.innerHTML = `<div class="checkbox" onclick="toggleComplete(${t.id})"></div>${textContent}<div class="actions"><button class="action-btn heart-btn ${t.pinned ? 'active' : ''}" onclick="togglePin(${t.id})">❤</button><button class="action-btn edit-btn" onclick="startEdit(${t.id})">✎</button><button class="action-btn delete-btn" onclick="deleteTodo(${t.id})">×</button></div>`;
+            list.appendChild(li);
+            if (t.isEditing) { const input = li.querySelector('.edit-input'); input.focus(); input.setSelectionRange(input.value.length, input.value.length); }
+        });
+    }
+    function addTodo() { const input = document.getElementById('todoInput'); if (!input.value.trim()) return; todos.push({ id: Date.now(), text: input.value, completed: false, pinned: false, isEditing: false }); input.value = ''; save(); }
+    function startEdit(id) { todos = todos.map(t => t.id === id ? {...t, isEditing: true} : {...t, isEditing: false}); render(); }
+    function finishEdit(id, newText) { todos = todos.map(t => t.id === id ? {...t, text: newText.trim() || t.text, isEditing: false} : t); save(); }
+    function handleEditKey(e, id, newText) { if (e.key === 'Enter') finishEdit(id, newText); if (e.key === 'Escape') { todos = todos.map(t => t.id === id ? {...t, isEditing: false} : t); render(); } }
+    function toggleComplete(id) { todos = todos.map(t => t.id === id ? {...t, completed: !t.completed} : t); save(); }
+    function togglePin(id) { todos = todos.map(t => t.id === id ? {...t, pinned: !t.pinned} : t); save(); }
+    function deleteTodo(id) { todos = todos.filter(t => t.id !== id); save(); }
+    document.getElementById('todoInput').addEventListener('keypress', (e) => { if(e.key === 'Enter') addTodo(); });
+    apply(); render();
+</script>
+
+</body>
+</html>
